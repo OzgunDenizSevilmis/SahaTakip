@@ -22,8 +22,16 @@ type RequestRow = {
   assigned_to: string | null;
   created_at: string;
   updated_at: string;
+  
 };
-
+type RequestListRow = RequestRow & {
+  categories: {
+    name: string;
+  } | null;
+};
+export type RequestListItem = Request & {
+  categoryName: string;
+};
 function mapRequest(row: RequestRow): Request {
   return {
     id: row.id,
@@ -42,7 +50,7 @@ function mapRequest(row: RequestRow): Request {
   };
 }
 
-export async function getMyRequests(): Promise<Request[]> {
+export async function getMyRequests(): Promise<RequestListItem[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -53,7 +61,12 @@ export async function getMyRequests(): Promise<Request[]> {
 
   const { data, error } = await supabase
     .from('requests')
-    .select('*')
+    .select(`
+      *,
+      categories (
+        name
+      )
+    `)
     .eq('created_by', user.id)
     .order('created_at', { ascending: false });
 
@@ -61,7 +74,10 @@ export async function getMyRequests(): Promise<Request[]> {
     throw error;
   }
 
-  return (data as RequestRow[]).map(mapRequest);
+  return (data as RequestListRow[]).map((row) => ({
+    ...mapRequest(row),
+    categoryName: row.categories?.name ?? 'Kategori yok',
+  }));
 }
 
 export type RequestSummary = {
