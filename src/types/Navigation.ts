@@ -8,4 +8,5 @@ export type AppStackParamList = {
   Home: undefined;
   Requests: undefined;
   Profile: undefined;
+  CreateRequest: undefined;
 };

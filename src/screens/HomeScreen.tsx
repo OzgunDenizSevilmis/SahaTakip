@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Button, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AppStackParamList } from '../types/Navigation';
+
 
 import {
   getMyRequestSummary,
@@ -7,9 +11,13 @@ import {
 } from '../services/requestService';
 
 export default function HomeScreen() {
+    const navigation =
+    useNavigation<NativeStackNavigationProp<AppStackParamList>>();
+
   const [summary, setSummary] = useState<RequestSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
 
   const loadSummary = async () => {
     setError(null);
@@ -19,9 +27,16 @@ export default function HomeScreen() {
 
       setSummary(data);
     } catch (error) {
-      console.error('Ana sayfa verileri alınamadı:', error);
-      setError('Ana sayfa verileri yüklenemedi.');
-    } finally {
+  console.error('ANA SAYFA HATASI:', error);
+  console.error(
+    'Hata mesajı:',
+    error instanceof Error ? error.message : error,
+  );
+  console.error(
+    'Hata stack:',
+    error instanceof Error ? error.stack : 'Stack yok',
+  );
+}finally {
       setIsLoading(false);
     }
   };
@@ -57,6 +72,11 @@ export default function HomeScreen() {
       <Text>Açık Talepler: {summary.openCount}</Text>
       <Text>İşlemdeki Talepler: {summary.inProgressCount}</Text>
       <Text>Tamamlanan Talepler: {summary.completedCount}</Text>
+      
+      <Button
+      title="Yeni Talep Oluştur"
+      onPress={() => navigation.navigate('CreateRequest')}
+      />
 
       <Text>Son Talepler</Text>
 

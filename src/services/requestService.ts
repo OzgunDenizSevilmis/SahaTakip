@@ -1,4 +1,10 @@
-import type { Request, RequestStatus } from '../types/models';
+import type {
+  Request,
+  RequestPriority,
+  RequestStatus,
+} from '../types/models';
+
+
 
 import { supabase } from './supabase';
 
@@ -7,7 +13,7 @@ type RequestRow = {
   title: string;
   description: string;
   category_id: string;
-  priority: string;
+  priority: RequestPriority;
   status: RequestStatus;
   image_url: string | null;
   latitude: number | null;
@@ -81,4 +87,42 @@ export async function getMyRequestSummary(): Promise<RequestSummary> {
     ).length,
     recentRequests: requests.slice(0, 5),
   };
+}
+
+export async function createRequest(
+ data: {
+  title: string;
+  description: string;
+  categoryId: string;
+  priority: RequestPriority;
+  imageUrl?: string | null;
+},
+
+): Promise<Request> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error('Kullanıcı oturumu bulunamadı.');
+  }
+
+  const { data: request, error } = await supabase
+    .from('requests')
+    .insert({
+      title: data.title,
+      description: data.description,
+      category_id: data.categoryId,
+      priority: data.priority,
+      created_by: user.id,
+      image_url: data.imageUrl ?? null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapRequest(request as RequestRow);
 }

@@ -6,8 +6,8 @@ export type RequestStatus =
   | 'in_progress'
   | 'resolved'
   | 'cancelled';
-
-export type RequestPriority = string;
+  
+export type RequestPriority = 'low' | 'medium' | 'high';
 
 export type User = {
   id: string;
