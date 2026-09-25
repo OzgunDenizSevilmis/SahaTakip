@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Text, View,Button, } from 'react-native';
+import { ActivityIndicator, FlatList, Text, TextInput ,View,Button, } from 'react-native';
 import {
   priorityColors,
   priorityLabels,
@@ -8,15 +8,51 @@ import {
 } from '../utils/requestLabels';
 import { getMyRequests } from '../services/requestService';
 import type { RequestListItem } from '../services/requestService';
+import { useRequestFilters } from '../hooks/useRequestFilters';
+import RequestFilter from '../components/RequestFilter';
+import {getCategories} from '../services/categoryService';
+
 
 export default function RequestsScreen() {
   const [requests, setRequests] = useState<RequestListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [categories, setCategories] = useState<
+  { id: string; name: string }[]
+ >([]);
+
+  const {
+  searchText,
+  setSearchText,
+  statusFilter,
+  setStatusFilter,
+  categoryFilter,
+  setCategoryFilter,
+  filteredRequests,
+  clearFilters,
+  } = useRequestFilters(requests);
+
+  const hasActiveFilters = 
+  searchText.trim().length > 0 ||
+  statusFilter !== null ||
+  categoryFilter !== null;
+
 
   useEffect(() => {
   let isMounted = true;
+
+  const loadCategories = async () => {
+    try {
+      const data = await getCategories();
+
+      if (isMounted) {
+        setCategories(data);
+      }
+    } catch (error) {
+      console.error('Kategoriler yüklenemedi:', error);
+    }
+  };
 
   const loadInitialRequests = async () => {
     try {
@@ -37,6 +73,8 @@ export default function RequestsScreen() {
   };
 
   void loadInitialRequests();
+  void loadCategories();
+
 
   return () => {
     isMounted = false;
@@ -78,14 +116,43 @@ if (errorMessage) {
 
   return (
   <FlatList
-    data={requests}
+    data={filteredRequests}
+    ListHeaderComponent={
+      <View>
+      <TextInput
+      value={searchText}
+      onChangeText={setSearchText}
+      placeholder="Taleplerde ara..."
+      autoCapitalize="none"
+      style={{
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        marginBottom: 16,
+        backgroundColor: '#ffffff',
+      }}
+      
+    />
+    <RequestFilter
+      statusValue={statusFilter}
+      categoryValue={categoryFilter}
+      categories={categories}
+      onStatusChange={setStatusFilter}
+      onCategoryChange={setCategoryFilter}
+        />
+        <Button title="Filtreleri Temizle" onPress={clearFilters} />
+       </View>
+  }
     keyExtractor={(item) => item.id}
     contentContainerStyle={{ padding: 16 }}
     refreshing={isRefreshing}
     onRefresh={handleRefresh}
     ListEmptyComponent={
   <View>
-    <Text>Henüz oluşturduğunuz bir talep bulunmuyor.</Text>
+    <Text>{hasActiveFilters 
+  ? 'Filtrelere uygun talep bulunamadı.' : 'Henüz oluşturduğunuz bir talep bulunmuyor.'}</Text>
   </View>
 }
     renderItem={({ item }) => (
