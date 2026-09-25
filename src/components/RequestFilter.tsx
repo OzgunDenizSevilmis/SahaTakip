@@ -2,10 +2,14 @@ import { useState } from 'react';
 import {
   Modal,
   Pressable,
+  StyleSheet,
   Text,
   View,
 } from 'react-native';
 
+import { colors } from '../theme/colors';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
 import type { RequestStatus } from '../types/models';
 import { statusLabels } from '../utils/requestLabels';
 
@@ -55,38 +59,34 @@ export default function RequestFilter({
 
   return (
     <View>
-      <Text style={{ marginBottom: 8 }}>Durum</Text>
+      <Text style={styles.filterTitle}>Filtreler</Text>
 
       <Pressable
         onPress={() => setOpenFilter('status')}
-        style={{
-          borderWidth: 1,
-          borderColor: '#d1d5db',
-          borderRadius: 10,
-          paddingHorizontal: 12,
-          paddingVertical: 12,
-          backgroundColor: '#ffffff',
-          marginBottom: 16,
-        }}
+        style={styles.filterOption}
       >
-        <Text>{selectedStatusLabel}</Text>
-      </Pressable>
+        <View>
+          <Text style={styles.filterLabel}>Durum</Text>
+          <Text style={styles.filterValue}>
+            {selectedStatusLabel}
+          </Text>
+        </View>
 
-      <Text style={{ marginBottom: 8 }}>Kategori</Text>
+        <Text style={styles.chevron}>›</Text>
+      </Pressable>
 
       <Pressable
         onPress={() => setOpenFilter('category')}
-        style={{
-          borderWidth: 1,
-          borderColor: '#d1d5db',
-          borderRadius: 10,
-          paddingHorizontal: 12,
-          paddingVertical: 12,
-          backgroundColor: '#ffffff',
-          marginBottom: 16,
-        }}
+        style={styles.filterOption}
       >
-        <Text>{selectedCategoryLabel}</Text>
+        <View>
+          <Text style={styles.filterLabel}>Kategori</Text>
+          <Text style={styles.filterValue}>
+            {selectedCategoryLabel}
+          </Text>
+        </View>
+
+        <Text style={styles.chevron}>›</Text>
       </Pressable>
 
       <Modal
@@ -97,41 +97,24 @@ export default function RequestFilter({
       >
         <Pressable
           onPress={closeModal}
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            padding: 24,
-            backgroundColor: 'rgba(0, 0, 0, 0.4)',
-          }}
+          style={styles.modalOverlay}
         >
           <Pressable
             onPress={(event) => event.stopPropagation()}
-            style={{
-              backgroundColor: '#ffffff',
-              borderRadius: 12,
-              padding: 16,
-            }}
+            style={styles.modalContent}
           >
             {openFilter === 'status' ? (
               <>
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: '600',
-                    marginBottom: 12,
-                  }}
-                >
-                  Durum seç
-                </Text>
+                <Text style={styles.modalTitle}>Durum seç</Text>
 
                 <Pressable
                   onPress={() => {
                     onStatusChange(null);
                     closeModal();
                   }}
-                  style={{ paddingVertical: 12 }}
+                  style={styles.modalOption}
                 >
-                  <Text>Tümü</Text>
+                  <Text style={styles.modalOptionText}>Tümü</Text>
                 </Pressable>
 
                 {statuses.map((status) => (
@@ -141,32 +124,26 @@ export default function RequestFilter({
                       onStatusChange(status);
                       closeModal();
                     }}
-                    style={{ paddingVertical: 12 }}
+                    style={styles.modalOption}
                   >
-                    <Text>{statusLabels[status]}</Text>
+                    <Text style={styles.modalOptionText}>
+                      {statusLabels[status]}
+                    </Text>
                   </Pressable>
                 ))}
               </>
             ) : (
               <>
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: '600',
-                    marginBottom: 12,
-                  }}
-                >
-                  Kategori seç
-                </Text>
+                <Text style={styles.modalTitle}>Kategori seç</Text>
 
                 <Pressable
                   onPress={() => {
                     onCategoryChange(null);
                     closeModal();
                   }}
-                  style={{ paddingVertical: 12 }}
+                  style={styles.modalOption}
                 >
-                  <Text>Tümü</Text>
+                  <Text style={styles.modalOptionText}>Tümü</Text>
                 </Pressable>
 
                 {categories.map((category) => (
@@ -176,9 +153,11 @@ export default function RequestFilter({
                       onCategoryChange(category.id);
                       closeModal();
                     }}
-                    style={{ paddingVertical: 12 }}
+                    style={styles.modalOption}
                   >
-                    <Text>{category.name}</Text>
+                    <Text style={styles.modalOptionText}>
+                      {category.name}
+                    </Text>
                   </Pressable>
                 ))}
               </>
@@ -189,3 +168,70 @@ export default function RequestFilter({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  filterTitle: {
+    ...typography.heading,
+    color: colors.text.primary,
+    marginBottom: spacing.md,
+  },
+
+  filterOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.md,
+  },
+
+  filterLabel: {
+    ...typography.small,
+    color: colors.text.secondary,
+    marginBottom: spacing.xs,
+  },
+
+  filterValue: {
+    ...typography.bodyMedium,
+    color: colors.text.primary,
+  },
+
+  chevron: {
+    fontSize: 26,
+    color: colors.text.muted,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: spacing.xl,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: spacing.lg,
+  },
+
+  modalTitle: {
+    ...typography.heading,
+    color: colors.text.primary,
+    marginBottom: spacing.sm,
+  },
+
+  modalOption: {
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+
+  modalOptionText: {
+    ...typography.body,
+    color: colors.text.primary,
+  },
+});

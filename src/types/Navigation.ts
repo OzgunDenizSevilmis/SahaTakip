@@ -5,8 +5,14 @@ export type AuthStackParamList = {
 };
 
 export type AppStackParamList = {
+  MainTabs: undefined;
+};
+
+export type MainTabParamList = {
   Home: undefined;
   Requests: undefined;
-  Profile: undefined;
   CreateRequest: undefined;
+  Profile: undefined;
 };
+
+
