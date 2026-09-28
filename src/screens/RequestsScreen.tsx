@@ -8,7 +8,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+
 import Empty from '../components/Empty';
+import ErrorState from '../components/ErrorState';
+import Loading from '../components/Loading';
 import RequestCard from '../components/RequestCard';
 import RequestFilter from '../components/RequestFilter';
 import { useRequestFilters } from '../hooks/useRequestFilters';
@@ -18,14 +23,20 @@ import type { RequestListItem } from '../services/requestService';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import Loading from '../components/Loading';
-import ErrorState from '../components/ErrorState';
+import type { AppStackParamList } from '../types/Navigation';
 
+type RequestsScreenNavigationProp =
+  NativeStackNavigationProp<AppStackParamList>;
 
 export default function RequestsScreen() {
+  const navigation =
+    useNavigation<RequestsScreenNavigationProp>();
+
   const [requests, setRequests] = useState<RequestListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(
+    null,
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [categories, setCategories] = useState<
     { id: string; name: string }[]
@@ -74,7 +85,9 @@ export default function RequestsScreen() {
         console.error('Talepler yüklenemedi:', error);
 
         if (isMounted) {
-          setErrorMessage('Talepler yüklenirken bir hata oluştu.');
+          setErrorMessage(
+            'Talepler yüklenirken bir hata oluştu.',
+          );
           setIsLoading(false);
         }
       }
@@ -104,18 +117,17 @@ export default function RequestsScreen() {
   };
 
   if (isLoading) {
-  return <Loading message="Talepler yükleniyor..." />;
+    return <Loading message="Talepler yükleniyor..." />;
   }
 
-if (errorMessage) {
-  return (
-    <ErrorState
-      message={errorMessage}
-      onRetry={handleRefresh}
-    />
-  );
-}
- 
+  if (errorMessage) {
+    return (
+      <ErrorState
+        message={errorMessage}
+        onRetry={handleRefresh}
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -172,14 +184,14 @@ if (errorMessage) {
           </View>
         }
         ListEmptyComponent={
-  <Empty
-    message={
-      hasActiveFilters
-        ? 'Filtrelere uygun talep bulunamadı.'
-        : 'Henüz oluşturduğunuz bir talep bulunmuyor.'
-    }
-  />
-}
+          <Empty
+            message={
+              hasActiveFilters
+                ? 'Filtrelere uygun talep bulunamadı.'
+                : 'Henüz oluşturduğunuz bir talep bulunmuyor.'
+            }
+          />
+        }
         renderItem={({ item }) => (
           <RequestCard
             title={item.title}
@@ -187,6 +199,11 @@ if (errorMessage) {
             categoryName={item.categoryName}
             priority={item.priority}
             status={item.status}
+            onPress={() => {
+              navigation.navigate('RequestDetail', {
+                requestId: item.id,
+              });
+            }}
           />
         )}
       />
@@ -204,6 +221,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
+
   title: {
     ...typography.title,
     color: colors.text.primary,

@@ -6,6 +6,9 @@ export type AuthStackParamList = {
 
 export type AppStackParamList = {
   MainTabs: undefined;
+  RequestDetail: {
+    requestId: string;
+  };
 };
 
 export type MainTabParamList = {
@@ -14,5 +17,3 @@ export type MainTabParamList = {
   CreateRequest: undefined;
   Profile: undefined;
 };
-
-

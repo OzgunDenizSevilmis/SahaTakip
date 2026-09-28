@@ -142,3 +142,38 @@ export async function createRequest(
 
   return mapRequest(request as RequestRow);
 }
+
+export async function getRequestById(
+  requestId: string,
+): Promise<RequestListItem> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error('Kullanıcı oturumu bulunamadı.');
+  }
+
+  const { data, error } = await supabase
+    .from('requests')
+    .select(`
+      *,
+      categories (
+        name
+      )
+    `)
+    .eq('id', requestId)
+    .eq('created_by', user.id)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  const row = data as RequestListRow;
+
+  return {
+    ...mapRequest(row),
+    categoryName: row.categories?.name ?? 'Kategori yok',
+  };
+}

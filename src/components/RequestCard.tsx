@@ -1,4 +1,9 @@
-import { StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import PriorityBadge from './PriorityBadge';
 import StatusBadge from './StatusBadge';
@@ -16,6 +21,7 @@ type RequestCardProps = {
   priority: RequestPriority;
   description?: string;
   categoryName?: string;
+  onPress?: () => void;
 };
 
 export default function RequestCard({
@@ -24,9 +30,10 @@ export default function RequestCard({
   priority,
   description,
   categoryName,
+  onPress,
 }: RequestCardProps) {
-  return (
-    <View style={styles.card}>
+  const content = (
+    <>
       <Text style={styles.title} numberOfLines={1}>
         {title}
       </Text>
@@ -50,8 +57,24 @@ export default function RequestCard({
         <PriorityBadge priority={priority} />
         <StatusBadge status={status} />
       </View>
-    </View>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.card,
+          pressed && styles.cardPressed,
+        ]}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return <View style={styles.card}>{content}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -62,6 +85,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: spacing.lg,
     marginBottom: spacing.md,
+  },
+
+  cardPressed: {
+    opacity: 0.7,
   },
 
   title: {
