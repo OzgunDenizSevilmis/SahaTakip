@@ -2,7 +2,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../types/Navigation';
 import { Controller, useForm } from 'react-hook-form';
-import { Text, TextInput, View,Pressable,Alert, } from 'react-native';
+import { Text, View,Pressable,Alert, } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
 import type { Category } from '../types/models';
@@ -16,6 +16,9 @@ import {
   createRequestSchema,
   type CreateRequestFormValues,
 } from '../utils/requestValidation';
+import Button from '../components/Button';
+import TextInput from '../components/TextInput';
+
 
 
 
@@ -133,39 +136,37 @@ const onSubmit = async (data: CreateRequestFormValues) => {
     <View>
       <Text>Yeni Talep</Text>
 
-      <Text>Başlık</Text>
-
       <Controller
-        control={control}
-        name="title"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
-            placeholder="Talep başlığını girin"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-          />
-        )}
-      />
+  control={control}
+  name="title"
+  render={({ field: { onChange, onBlur, value } }) => (
+    <TextInput
+      label="Başlık"
+      placeholder="Talep başlığını girin"
+      value={value}
+      onChangeText={onChange}
+      onBlur={onBlur}
+      error={errors.title?.message}
+    />
+  )}
+/>
 
-      {errors.title && <Text>{errors.title.message}</Text>}
-
-      <Text>Açıklama</Text>
-
-      <Controller
-        control={control}
-        name="description"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
-            placeholder="Talebi açıklayın"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            multiline
-          />
-          
-        )}
-      />
+<Controller
+  control={control}
+  name="description"
+  render={({ field: { onChange, onBlur, value } }) => (
+    <TextInput
+      label="Açıklama"
+      placeholder="Talebi açıklayın"
+      value={value}
+      onChangeText={onChange}
+      onBlur={onBlur}
+      multiline
+      textAlignVertical="top"
+      error={errors.description?.message}
+    />
+  )}
+/>
 
 <Text>Kategori</Text>
 
@@ -233,16 +234,14 @@ const onSubmit = async (data: CreateRequestFormValues) => {
 />
 
 {errors.priority && <Text>{errors.priority.message}</Text>}
-      {errors.description && <Text>{errors.description.message}</Text>}
 
-      <Pressable
-        onPress={handleSubmit(onSubmit)}
-        disabled={isSubmitting}
-      >
-        <Text>
-          {isSubmitting ? 'Oluşturuluyor...' : 'Talep Oluştur'}
-        </Text>
-      </Pressable>
+     <Button
+  title="Talep Oluştur"
+  onPress={() => {
+    void handleSubmit(onSubmit)();
+  }}
+  loading={isSubmitting}
+/>
 
 {submitError && <Text>{submitError}</Text>}
    

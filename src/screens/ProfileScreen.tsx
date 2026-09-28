@@ -14,6 +14,10 @@ import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import type { User } from '../types/models';
+import Loading from '../components/Loading';
+import ErrorState from '../components/ErrorState';
+
+
 
 const roleLabels: Record<User['role'], string> = {
   requester: 'Talep Oluşturucu',
@@ -92,40 +96,19 @@ export default function ProfileScreen() {
   };
 
   if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centered}>
-          <ActivityIndicator />
-          <Text style={styles.loadingText}>
-            Profil yükleniyor...
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
+  return <Loading message="Profil yükleniyor..." />;
   }
-
-  if (errorMessage || !profile) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centered}>
-          <Text style={styles.errorText}>
-            {errorMessage ?? 'Profil bilgileri bulunamadı.'}
-          </Text>
-
-          <Pressable
-            onPress={() => {
-              void handleRetry();
-            }}
-            style={styles.retryButton}
-          >
-            <Text style={styles.retryButtonText}>
-              Tekrar Dene
-            </Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    );
-  }
+if (errorMessage || !profile) {
+  return (
+    <ErrorState
+      message={errorMessage ?? 'Profil bilgileri bulunamadı.'}
+      onRetry={() => {
+        void handleRetry();
+      }}
+    />
+  );
+}
+  
 
   const profileInitial = profile.fullName
     .trim()
@@ -226,38 +209,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: spacing.lg,
-  },
-
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg,
-  },
-
-  loadingText: {
-    ...typography.body,
-    color: colors.text.secondary,
-    marginTop: spacing.sm,
-  },
-
-  errorText: {
-    ...typography.body,
-    color: colors.error,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-
-  retryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-
-  retryButtonText: {
-    ...typography.bodyMedium,
-    color: colors.text.inverse,
   },
 
   title: {

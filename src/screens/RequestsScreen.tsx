@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -9,7 +8,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import Empty from '../components/Empty';
+import RequestCard from '../components/RequestCard';
 import RequestFilter from '../components/RequestFilter';
 import { useRequestFilters } from '../hooks/useRequestFilters';
 import { getCategories } from '../services/categoryService';
@@ -18,12 +18,9 @@ import type { RequestListItem } from '../services/requestService';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import {
-  priorityColors,
-  priorityLabels,
-  statusColors,
-  statusLabels,
-} from '../utils/requestLabels';
+import Loading from '../components/Loading';
+import ErrorState from '../components/ErrorState';
+
 
 export default function RequestsScreen() {
   const [requests, setRequests] = useState<RequestListItem[]>([]);
@@ -107,28 +104,18 @@ export default function RequestsScreen() {
   };
 
   if (isLoading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator />
-        <Text style={styles.loadingText}>Talepler yükleniyor...</Text>
-      </View>
-    );
+  return <Loading message="Talepler yükleniyor..." />;
   }
 
-  if (errorMessage) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{errorMessage}</Text>
-
-        <Pressable
-          onPress={handleRefresh}
-          style={styles.retryButton}
-        >
-          <Text style={styles.retryButtonText}>Tekrar Dene</Text>
-        </Pressable>
-      </View>
-    );
-  }
+if (errorMessage) {
+  return (
+    <ErrorState
+      message={errorMessage}
+      onRetry={handleRefresh}
+    />
+  );
+}
+ 
 
   return (
     <SafeAreaView style={styles.container}>
@@ -185,60 +172,22 @@ export default function RequestsScreen() {
           </View>
         }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              {hasActiveFilters
-                ? 'Filtrelere uygun talep bulunamadı.'
-                : 'Henüz oluşturduğunuz bir talep bulunmuyor.'}
-            </Text>
-          </View>
-        }
+  <Empty
+    message={
+      hasActiveFilters
+        ? 'Filtrelere uygun talep bulunamadı.'
+        : 'Henüz oluşturduğunuz bir talep bulunmuyor.'
+    }
+  />
+}
         renderItem={({ item }) => (
-          <View style={styles.requestCard}>
-            <Text style={styles.requestTitle}>
-              {item.title}
-            </Text>
-
-            <Text
-              style={styles.requestDescription}
-              numberOfLines={2}
-            >
-              {item.description}
-            </Text>
-
-            <Text style={styles.categoryText}>
-              Kategori: {item.categoryName}
-            </Text>
-
-            <View style={styles.badgesRow}>
-              <View
-                style={[
-                  styles.badge,
-                  {
-                    backgroundColor:
-                      priorityColors[item.priority],
-                  },
-                ]}
-              >
-                <Text style={styles.badgeText}>
-                  Öncelik: {priorityLabels[item.priority]}
-                </Text>
-              </View>
-
-              <View
-                style={[
-                  styles.badge,
-                  {
-                    backgroundColor: statusColors[item.status],
-                  },
-                ]}
-              >
-                <Text style={styles.badgeText}>
-                  {statusLabels[item.status]}
-                </Text>
-              </View>
-            </View>
-          </View>
+          <RequestCard
+            title={item.title}
+            description={item.description}
+            categoryName={item.categoryName}
+            priority={item.priority}
+            status={item.status}
+          />
         )}
       />
     </SafeAreaView>
@@ -255,40 +204,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-    padding: spacing.lg,
-  },
-
-  loadingText: {
-    ...typography.body,
-    color: colors.text.secondary,
-    marginTop: spacing.sm,
-  },
-
-  errorText: {
-    ...typography.body,
-    color: colors.error,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-
-  retryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-
-  retryButtonText: {
-    ...typography.bodyMedium,
-    color: colors.text.inverse,
-  },
-
   title: {
     ...typography.title,
     color: colors.text.primary,
@@ -332,61 +247,5 @@ const styles = StyleSheet.create({
 
   clearFiltersTextDisabled: {
     color: colors.text.muted,
-  },
-
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: spacing.xxxl,
-  },
-
-  emptyText: {
-    ...typography.body,
-    color: colors.text.secondary,
-    textAlign: 'center',
-  },
-
-  requestCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 14,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-  },
-
-  requestTitle: {
-    ...typography.bodyMedium,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-
-  requestDescription: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    marginBottom: spacing.md,
-  },
-
-  categoryText: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    marginBottom: spacing.md,
-  },
-
-  badgesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-
-  badge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 8,
-  },
-
-  badgeText: {
-    ...typography.small,
-    color: colors.text.primary,
   },
 });
