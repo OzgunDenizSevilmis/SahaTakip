@@ -1,4 +1,4 @@
-import type {
+import type {StatusHistory,
   Request,
   RequestPriority,
   RequestStatus,
@@ -59,7 +59,17 @@ export async function getMyRequests(): Promise<RequestListItem[]> {
     throw new Error('Kullanıcı oturumu bulunamadı.');
   }
 
-  const { data, error } = await supabase
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError) {
+    throw profileError;
+  }
+
+  let query = supabase
     .from('requests')
     .select(`
       *,
@@ -67,8 +77,15 @@ export async function getMyRequests(): Promise<RequestListItem[]> {
         name
       )
     `)
-    .eq('created_by', user.id)
     .order('created_at', { ascending: false });
+
+  if (profile.role === 'requester') {
+    query = query.eq('created_by', user.id);
+  } else if (profile.role === 'staff') {
+    query = query.eq('assigned_to', user.id);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw error;
@@ -154,7 +171,17 @@ export async function getRequestById(
     throw new Error('Kullanıcı oturumu bulunamadı.');
   }
 
-  const { data, error } = await supabase
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError) {
+    throw profileError;
+  }
+
+  let query = supabase
     .from('requests')
     .select(`
       *,
@@ -162,9 +189,15 @@ export async function getRequestById(
         name
       )
     `)
-    .eq('id', requestId)
-    .eq('created_by', user.id)
-    .single();
+    .eq('id', requestId);
+
+  if (profile.role === 'requester') {
+    query = query.eq('created_by', user.id);
+  } else if (profile.role === 'staff') {
+    query = query.eq('assigned_to', user.id);
+  }
+
+  const { data, error } = await query.single();
 
   if (error) {
     throw error;
@@ -176,4 +209,57 @@ export async function getRequestById(
     ...mapRequest(row),
     categoryName: row.categories?.name ?? 'Kategori yok',
   };
+}
+
+export async function changeRequestStatus(
+  requestId: string,
+  newStatus: RequestStatus,
+  note?: string,
+): Promise<Request> {
+  const { data, error } = await supabase.rpc(
+    'change_request_status',
+    {
+      p_request_id: requestId,
+      p_new_status: newStatus,
+      p_note: note ?? null,
+    },
+  );
+
+  if (error) {
+    throw error;
+  }
+
+  return mapRequest(data as RequestRow);
+}
+
+export async function getRequestStatusHistory(
+  requestId: string,
+): Promise<StatusHistory[]> {
+  const { data, error } = await supabase
+    .from('status_history')
+    .select(`
+      id,
+      request_id,
+      old_status,
+      new_status,
+      note,
+      changed_by,
+      changed_at
+    `)
+    .eq('request_id', requestId)
+    .order('changed_at', { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    requestId: row.request_id,
+    oldStatus: row.old_status as RequestStatus | null,
+    newStatus: row.new_status as RequestStatus,
+    note: row.note,
+    changedBy: row.changed_by,
+    changedAt: row.changed_at,
+  }));
 }

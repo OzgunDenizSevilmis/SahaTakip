@@ -12,14 +12,26 @@ import type {
   NativeStackScreenProps,
 } from '@react-navigation/native-stack';
 
+import Button from '../components/Button';
+import TextInput from '../components/TextInput';
 import Empty from '../components/Empty';
 import ErrorState from '../components/ErrorState';
 import Loading from '../components/Loading';
 import PriorityBadge from '../components/PriorityBadge';
 import StatusBadge from '../components/StatusBadge';
-import { getRequestById } from '../services/requestService';
+import {
+  changeRequestStatus,
+  getRequestById,
+  getRequestStatusHistory,
+} from '../services/requestService';
+import { getCurrentUserRole } from '../services/profileService';
 import type { RequestListItem } from '../services/requestService';
 import type { AppStackParamList } from '../types/Navigation';
+import type {
+  RequestStatus,
+  StatusHistory,
+  UserRole,
+} from '../types/models';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -31,44 +43,133 @@ type RequestDetailScreenProps = NativeStackScreenProps<
 
 export default function RequestDetailScreen() {
   const route = useRoute<RequestDetailScreenProps['route']>();
-
   const { requestId } = route.params;
 
   const [request, setRequest] =
     useState<RequestListItem | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(
-    null,
-  );
 
-const loadRequest = useCallback(async () => {
-  setIsLoading(true);
-  setErrorMessage(null);
+  const [userRole, setUserRole] =
+    useState<UserRole | null>(null);
 
+  const [isLoading, setIsLoading] =
+    useState(true);
+
+  const [statusHistory, setStatusHistory] =
+    useState<StatusHistory[]>([]);
+
+  const [isChangingStatus, setIsChangingStatus] =
+    useState(false);
+
+  const [errorMessage, setErrorMessage] =
+    useState<string | null>(null);
+
+  const [statusNote, setStatusNote] = useState('');
+
+  const loadRequest = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const data = await getRequestById(requestId);
+      setRequest(data);
+    } catch (error) {
+      console.error(
+        'Talep detayı yüklenemedi:',
+        error,
+      );
+
+      setErrorMessage(
+        'Talep detayları yüklenirken bir hata oluştu.',
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [requestId]);
+
+  const loadStatusHistory = useCallback(async () => {
   try {
-    const data = await getRequestById(requestId);
-    setRequest(data);
-  } catch (error) {
-    console.error('Talep detayı yüklenemedi:', error);
+    const history =
+      await getRequestStatusHistory(requestId);
 
-    setErrorMessage(
-      'Talep detayları yüklenirken bir hata oluştu.',
+    setStatusHistory(history);
+  } catch (error) {
+    console.error(
+      'Durum geçmişi yüklenemedi:',
+      error,
     );
-  } finally {
-    setIsLoading(false);
   }
 }, [requestId]);
 
-useEffect(() => {
+
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      void loadRequest();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [loadRequest]);
+   useEffect(() => {
   const timeoutId = setTimeout(() => {
-    void loadRequest();
+    void loadStatusHistory();
   }, 0);
 
   return () => clearTimeout(timeoutId);
-}, [loadRequest]);
+}, [loadStatusHistory]);
+
+
+
+  useEffect(() => {
+    const loadUserRole = async () => {
+      try {
+        const role = await getCurrentUserRole();
+        setUserRole(role);
+      } catch (error) {
+        console.error(
+          'Kullanıcı rolü yüklenemedi:',
+          error,
+        );
+      }
+    };
+
+    void loadUserRole();
+  }, []);
+
+const handleStatusChange = async (newStatus: RequestStatus) => {
+  if (!request) return;
+
+  setIsChangingStatus(true);
+
+  try {
+    const updatedRequest = await changeRequestStatus(
+      request.id,
+      newStatus,
+      statusNote.trim() || undefined,
+    );
+
+    setRequest((currentRequest) => {
+      if (!currentRequest) return currentRequest;
+
+      return {
+        ...currentRequest,
+        ...updatedRequest,
+      };
+    });
+
+    setStatusNote('');
+    await loadStatusHistory();
+  } catch (error) {
+    console.error('Talep durumu değiştirilemedi:', error);
+  } finally {
+    setIsChangingStatus(false);
+  }
+};
+
 
   if (isLoading) {
-    return <Loading message="Talep detayı yükleniyor..." />;
+    return (
+      <Loading message="Talep detayı yükleniyor..." />
+    );
   }
 
   if (errorMessage) {
@@ -83,8 +184,13 @@ useEffect(() => {
   }
 
   if (!request) {
-    return <Empty message="Talep bilgileri bulunamadı." />;
+    return (
+      <Empty message="Talep bilgileri bulunamadı." />
+    );
   }
+
+  const canChangeStatus =
+    userRole === 'staff' || userRole === 'admin';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -93,16 +199,106 @@ useEffect(() => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerCard}>
-          <Text style={styles.title}>{request.title}</Text>
+          <Text style={styles.title}>
+            {request.title}
+          </Text>
 
           <View style={styles.badges}>
             <StatusBadge status={request.status} />
-            <PriorityBadge priority={request.priority} />
+            <PriorityBadge
+              priority={request.priority}
+            />
           </View>
+
+          {canChangeStatus && (
+            <View style={styles.statusActions}>
+              <Text style={styles.statusActionTitle}>
+                Durumu Değiştir
+              </Text>
+                  <TextInput
+                    label="Durum Notu"
+                    placeholder="Durum değişikliği için not ekleyin"
+                    value={statusNote}
+                    onChangeText={setStatusNote}
+                    multiline
+                  />
+              <View style={styles.statusButtons}>
+                <Button
+                  title="Atandı"
+                  onPress={() => {
+                    void handleStatusChange(
+                      'assigned',
+                    );
+                  }}
+                  loading={
+                    isChangingStatus &&
+                    request.status !== 'assigned'
+                  }
+                  disabled={
+                    isChangingStatus ||
+                    request.status === 'assigned'
+                  }
+                />
+
+                <Button
+                  title="İşlemde"
+                  onPress={() => {
+                    void handleStatusChange(
+                      'in_progress',
+                    );
+                  }}
+                  loading={
+                    isChangingStatus &&
+                    request.status !== 'in_progress'
+                  }
+                  disabled={
+                    isChangingStatus ||
+                    request.status === 'in_progress'
+                  }
+                />
+
+                <Button
+                  title="Çözüldü"
+                  onPress={() => {
+                    void handleStatusChange(
+                      'resolved',
+                    );
+                  }}
+                  loading={
+                    isChangingStatus &&
+                    request.status !== 'resolved'
+                  }
+                  disabled={
+                    isChangingStatus ||
+                    request.status === 'resolved'
+                  }
+                />
+
+                <Button
+                  title="İptal"
+                  onPress={() => {
+                    void handleStatusChange(
+                      'cancelled',
+                    );
+                  }}
+                  loading={
+                    isChangingStatus &&
+                    request.status !== 'cancelled'
+                  }
+                  disabled={
+                    isChangingStatus ||
+                    request.status === 'cancelled'
+                  }
+                />
+              </View>
+            </View>
+          )}
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Açıklama</Text>
+          <Text style={styles.sectionTitle}>
+            Açıklama
+          </Text>
 
           <Text style={styles.description}>
             {request.description}
@@ -115,7 +311,9 @@ useEffect(() => {
           </Text>
 
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Kategori</Text>
+            <Text style={styles.infoLabel}>
+              Kategori
+            </Text>
 
             <Text style={styles.infoValue}>
               {request.categoryName}
@@ -125,27 +323,73 @@ useEffect(() => {
           <View style={styles.divider} />
 
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Oluşturulma</Text>
+            <Text style={styles.infoLabel}>
+              Oluşturulma
+            </Text>
 
             <Text style={styles.infoValue}>
-              {new Date(request.createdAt).toLocaleString('tr-TR')}
+              {new Date(
+                request.createdAt,
+              ).toLocaleString('tr-TR')}
             </Text>
           </View>
+
+                  {statusHistory.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>
+              Durum Geçmişi
+            </Text>
+
+            {statusHistory.map((history, index) => (
+              <View
+                key={history.id}
+                style={styles.historyItem}
+              >
+                <Text style={styles.historyStatus}>
+                  {history.newStatus}
+                </Text>
+
+                <Text style={styles.historyDate}>
+                  {new Date(
+                    history.changedAt,
+                  ).toLocaleString('tr-TR')}
+                </Text>
+
+                {history.note && (
+                  <Text style={styles.historyNote}>
+                    Not: {history.note}
+                  </Text>
+                )}
+
+                {index < statusHistory.length - 1 && (
+                  <View style={styles.historyDivider} />
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+
 
           <View style={styles.divider} />
 
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Son Güncelleme</Text>
+            <Text style={styles.infoLabel}>
+              Son Güncelleme
+            </Text>
 
             <Text style={styles.infoValue}>
-              {new Date(request.updatedAt).toLocaleString('tr-TR')}
+              {new Date(
+                request.updatedAt,
+              ).toLocaleString('tr-TR')}
             </Text>
           </View>
         </View>
 
         {request.imageUrl && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Görsel</Text>
+            <Text style={styles.sectionTitle}>
+              Görsel
+            </Text>
 
             <Image
               source={{ uri: request.imageUrl }}
@@ -189,6 +433,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+
+  statusActions: {
+    marginTop: spacing.lg,
+  },
+
+  statusActionTitle: {
+    ...typography.bodyMedium,
+    color: colors.text.primary,
+    marginBottom: spacing.md,
+  },
+
+  statusButtons: {
     gap: spacing.sm,
   },
 
@@ -238,5 +496,33 @@ const styles = StyleSheet.create({
     height: 220,
     borderRadius: 12,
     backgroundColor: colors.background,
+  },
+
+    historyItem: {
+    paddingVertical: spacing.sm,
+  },
+
+  historyStatus: {
+    ...typography.bodyMedium,
+    color: colors.text.primary,
+    textTransform: 'capitalize',
+  },
+
+  historyDate: {
+    ...typography.small,
+    color: colors.text.secondary,
+    marginTop: spacing.xs,
+  },
+
+  historyNote: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    marginTop: spacing.xs,
+  },
+
+  historyDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
   },
 });
