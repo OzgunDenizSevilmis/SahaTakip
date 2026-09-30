@@ -68,3 +68,19 @@ export async function getCurrentUserRole(): Promise<UserRole> {
 
   return data.role as UserRole;
 }
+
+export async function getStaffUsers(): Promise<User[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('role', 'staff')
+    .order('full_name', { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(mapProfile);
+}
+
+

@@ -4,8 +4,6 @@ import type {StatusHistory,
   RequestStatus,
 } from '../types/models';
 
-
-
 import { supabase } from './supabase';
 
 type RequestRow = {
@@ -129,6 +127,8 @@ export async function createRequest(
   categoryId: string;
   priority: RequestPriority;
   imageUrl?: string | null;
+      latitude?: number | null;
+    longitude?: number | null;
 },
 
 ): Promise<Request> {
@@ -139,6 +139,7 @@ export async function createRequest(
   if (!user) {
     throw new Error('Kullanıcı oturumu bulunamadı.');
   }
+  
 
   const { data: request, error } = await supabase
     .from('requests')
@@ -149,6 +150,8 @@ export async function createRequest(
       priority: data.priority,
       created_by: user.id,
       image_url: data.imageUrl ?? null,
+        latitude: data.latitude ?? null,
+  longitude: data.longitude ?? null,
     })
     .select()
     .single();
@@ -231,6 +234,25 @@ export async function changeRequestStatus(
 
   return mapRequest(data as RequestRow);
 }
+
+export async function assignRequest(
+  requestId: string,
+  staffId: string,
+): Promise<Request> {
+  const { data, error } = await supabase.rpc('assign_request', {
+    p_request_id: requestId,
+    p_staff_id: staffId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return mapRequest(data as RequestRow);
+}
+
+
+
 
 export async function getRequestStatusHistory(
   requestId: string,

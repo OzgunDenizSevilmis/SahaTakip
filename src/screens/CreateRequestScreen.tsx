@@ -18,6 +18,8 @@ import {
 } from '../utils/requestValidation';
 import Button from '../components/Button';
 import TextInput from '../components/TextInput';
+import * as Location from 'expo-location';
+
 
 
 
@@ -65,6 +67,38 @@ export default function CreateRequestScreen()
 }
 };
 
+const getCurrentLocation = async () => {
+  try {
+    const permissionResult =
+      await Location.requestForegroundPermissionsAsync();
+
+    if (permissionResult.status !== 'granted') {
+      Alert.alert(
+        'İzin gerekli',
+        'Konum eklemek için konum izni vermeniz gerekiyor.',
+      );
+      return;
+    }
+
+    const currentLocation =
+      await Location.getCurrentPositionAsync({});
+
+    setLocation({
+      latitude: currentLocation.coords.latitude,
+      longitude: currentLocation.coords.longitude,
+    });
+  } catch (error) {
+    console.error('Konum alınamadı:', error);
+
+    Alert.alert(
+      'Hata',
+      'Konum alınırken bir hata oluştu.',
+    );
+  }
+};
+
+
+
 
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,10 +119,12 @@ const onSubmit = async (data: CreateRequestFormValues) => {
   }
 
 
-    await createRequest({
+  await createRequest({
   ...data,
   imageUrl: imagePath,
-  });
+  latitude: location?.latitude ?? null,
+  longitude: location?.longitude ?? null,
+});
 
     Alert.alert(
       'Başarılı',
@@ -96,7 +132,7 @@ const onSubmit = async (data: CreateRequestFormValues) => {
       [
         {
           text: 'Tamam',
-          onPress: () => navigation.navigate('Requests'),
+          onPress: () => navigation.navigate('MainTabs'),
         },
       ],
     );
@@ -113,6 +149,10 @@ const onSubmit = async (data: CreateRequestFormValues) => {
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] =
   useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [location, setLocation] = useState<{
+  latitude: number;
+  longitude: number;
+} | null>(null);
   
   useEffect(() => {
   const loadCategories = async () => {
@@ -228,7 +268,21 @@ const onSubmit = async (data: CreateRequestFormValues) => {
 
 {selectedImage && (
   <Text>Fotoğraf seçildi.</Text>
-)}  
+)}
+<Text>Konum</Text>
+
+<Pressable onPress={getCurrentLocation}>
+  <Text>
+    {location ? 'Konum Alındı' : 'Konumumu Ekle'}
+  </Text>
+</Pressable>
+
+{location && (
+  <Text>
+    Konum: {location.latitude}, {location.longitude}
+  </Text>
+)}
+  
     </View>
   )}
 />

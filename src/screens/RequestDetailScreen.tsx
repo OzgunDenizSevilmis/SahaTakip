@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+
 import {
   Image,
   ScrollView,
@@ -6,34 +7,56 @@ import {
   Text,
   View,
 } from 'react-native';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { useRoute } from '@react-navigation/native';
+
 import type {
   NativeStackScreenProps,
 } from '@react-navigation/native-stack';
 
 import Button from '../components/Button';
+
 import TextInput from '../components/TextInput';
+
 import Empty from '../components/Empty';
+
 import ErrorState from '../components/ErrorState';
+
 import Loading from '../components/Loading';
+
 import PriorityBadge from '../components/PriorityBadge';
+
 import StatusBadge from '../components/StatusBadge';
+
 import {
+  assignRequest,
   changeRequestStatus,
   getRequestById,
   getRequestStatusHistory,
 } from '../services/requestService';
-import { getCurrentUserRole } from '../services/profileService';
+
+import {
+  getCurrentUserRole,
+  getStaffUsers,
+} from '../services/profileService';
+
 import type { RequestListItem } from '../services/requestService';
+
 import type { AppStackParamList } from '../types/Navigation';
+
 import type {
   RequestStatus,
   StatusHistory,
+  User,
   UserRole,
 } from '../types/models';
+
 import { colors } from '../theme/colors';
+
 import { spacing } from '../theme/spacing';
+
 import { typography } from '../theme/typography';
 
 type RequestDetailScreenProps = NativeStackScreenProps<
@@ -43,6 +66,7 @@ type RequestDetailScreenProps = NativeStackScreenProps<
 
 export default function RequestDetailScreen() {
   const route = useRoute<RequestDetailScreenProps['route']>();
+
   const { requestId } = route.params;
 
   const [request, setRequest] =
@@ -50,6 +74,10 @@ export default function RequestDetailScreen() {
 
   const [userRole, setUserRole] =
     useState<UserRole | null>(null);
+
+  const [staffUsers, setStaffUsers] = useState<User[]>([]);
+
+  const [isAssigning, setIsAssigning] = useState(false);
 
   const [isLoading, setIsLoading] =
     useState(true);
@@ -71,6 +99,7 @@ export default function RequestDetailScreen() {
 
     try {
       const data = await getRequestById(requestId);
+
       setRequest(data);
     } catch (error) {
       console.error(
@@ -87,20 +116,18 @@ export default function RequestDetailScreen() {
   }, [requestId]);
 
   const loadStatusHistory = useCallback(async () => {
-  try {
-    const history =
-      await getRequestStatusHistory(requestId);
+    try {
+      const history =
+        await getRequestStatusHistory(requestId);
 
-    setStatusHistory(history);
-  } catch (error) {
-    console.error(
-      'Durum geçmişi yüklenemedi:',
-      error,
-    );
-  }
-}, [requestId]);
-
-
+      setStatusHistory(history);
+    } catch (error) {
+      console.error(
+        'Durum geçmişi yüklenemedi:',
+        error,
+      );
+    }
+  }, [requestId]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -109,20 +136,20 @@ export default function RequestDetailScreen() {
 
     return () => clearTimeout(timeoutId);
   }, [loadRequest]);
-   useEffect(() => {
-  const timeoutId = setTimeout(() => {
-    void loadStatusHistory();
-  }, 0);
 
-  return () => clearTimeout(timeoutId);
-}, [loadStatusHistory]);
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      void loadStatusHistory();
+    }, 0);
 
-
+    return () => clearTimeout(timeoutId);
+  }, [loadStatusHistory]);
 
   useEffect(() => {
     const loadUserRole = async () => {
       try {
         const role = await getCurrentUserRole();
+
         setUserRole(role);
       } catch (error) {
         console.error(
@@ -135,36 +162,97 @@ export default function RequestDetailScreen() {
     void loadUserRole();
   }, []);
 
-const handleStatusChange = async (newStatus: RequestStatus) => {
-  if (!request) return;
-
-  setIsChangingStatus(true);
-
-  try {
-    const updatedRequest = await changeRequestStatus(
-      request.id,
-      newStatus,
-      statusNote.trim() || undefined,
-    );
-
-    setRequest((currentRequest) => {
-      if (!currentRequest) return currentRequest;
-
-      return {
-        ...currentRequest,
-        ...updatedRequest,
-      };
-    });
-
-    setStatusNote('');
-    await loadStatusHistory();
-  } catch (error) {
-    console.error('Talep durumu değiştirilemedi:', error);
-  } finally {
-    setIsChangingStatus(false);
+ useEffect(() => {
+  if (!userRole) {
+    return;
   }
-};
 
+  const timeoutId = setTimeout(() => {
+    const loadStaffUsers = async () => {
+      try {
+        const staff = await getStaffUsers();
+        setStaffUsers(staff);
+      } catch (error) {
+        console.error(
+          'Personel listesi yüklenemedi:',
+          error,
+        );
+      }
+    };
+
+    void loadStaffUsers();
+  }, 0);
+
+  return () => clearTimeout(timeoutId);
+}, [userRole]);
+
+
+  const handleStatusChange = async (
+    newStatus: RequestStatus,
+  ) => {
+    if (!request) return;
+
+    setIsChangingStatus(true);
+
+    try {
+      const updatedRequest = await changeRequestStatus(
+        request.id,
+        newStatus,
+        statusNote.trim() || undefined,
+      );
+
+      setRequest((currentRequest) => {
+        if (!currentRequest) return currentRequest;
+
+        return {
+          ...currentRequest,
+          ...updatedRequest,
+        };
+      });
+
+      setStatusNote('');
+
+      await loadStatusHistory();
+    } catch (error) {
+      console.error(
+        'Talep durumu değiştirilemedi:',
+        error,
+      );
+    } finally {
+      setIsChangingStatus(false);
+    }
+  };
+
+  const handleAssignStaff = async (
+    staffId: string,
+  ) => {
+    if (!request) return;
+
+    try {
+      setIsAssigning(true);
+
+      const updatedRequest = await assignRequest(
+        request.id,
+        staffId,
+      );
+
+      setRequest((currentRequest) => {
+        if (!currentRequest) return currentRequest;
+
+        return {
+          ...currentRequest,
+          ...updatedRequest,
+        };
+      });
+    } catch (error) {
+      console.error(
+        'Talep atanamadı:',
+        error,
+      );
+    } finally {
+      setIsAssigning(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -205,6 +293,7 @@ const handleStatusChange = async (newStatus: RequestStatus) => {
 
           <View style={styles.badges}>
             <StatusBadge status={request.status} />
+
             <PriorityBadge
               priority={request.priority}
             />
@@ -215,13 +304,15 @@ const handleStatusChange = async (newStatus: RequestStatus) => {
               <Text style={styles.statusActionTitle}>
                 Durumu Değiştir
               </Text>
-                  <TextInput
-                    label="Durum Notu"
-                    placeholder="Durum değişikliği için not ekleyin"
-                    value={statusNote}
-                    onChangeText={setStatusNote}
-                    multiline
-                  />
+
+              <TextInput
+                label="Durum Notu"
+                placeholder="Durum değişikliği için not ekleyin"
+                value={statusNote}
+                onChangeText={setStatusNote}
+                multiline
+              />
+
               <View style={styles.statusButtons}>
                 <Button
                   title="Atandı"
@@ -310,6 +401,48 @@ const handleStatusChange = async (newStatus: RequestStatus) => {
             Talep Bilgileri
           </Text>
 
+          <View>
+  <Text style={styles.infoLabel}>
+    Sorumlu Personel
+  </Text>
+
+  {request.assignedTo ? (
+    <Text style={styles.infoValue}>
+      {staffUsers.find(
+        (staff) => staff.id === request.assignedTo,
+      )?.fullName ?? 'Atanan personel bulunamadı.'}
+    </Text>
+  ) : (
+    <Text style={styles.infoValue}>
+      Henüz personel atanmadı.
+    </Text>
+  )}
+
+  {userRole === 'admin' && (
+    <View style={styles.statusButtons}>
+      {staffUsers.map((staff) => (
+        <Button
+          key={staff.id}
+          title={
+            request.assignedTo === staff.id
+              ? `✓ ${staff.fullName}`
+              : staff.fullName
+          }
+          onPress={() => {
+            void handleAssignStaff(staff.id);
+          }}
+          loading={isAssigning}
+          disabled={isAssigning}
+        />
+      ))}
+    </View>
+  )}
+</View>
+
+
+
+          <View style={styles.divider} />
+
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>
               Kategori
@@ -334,41 +467,53 @@ const handleStatusChange = async (newStatus: RequestStatus) => {
             </Text>
           </View>
 
-                  {statusHistory.length > 0 && (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>
-              Durum Geçmişi
-            </Text>
+          {statusHistory.length > 0 && (
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>
+                Durum Geçmişi
+              </Text>
 
-            {statusHistory.map((history, index) => (
-              <View
-                key={history.id}
-                style={styles.historyItem}
-              >
-                <Text style={styles.historyStatus}>
-                  {history.newStatus}
-                </Text>
+              {statusHistory.map(
+                (history, index) => (
+                  <View
+                    key={history.id}
+                    style={styles.historyItem}
+                  >
+                    <Text
+                      style={styles.historyStatus}
+                    >
+                      {history.newStatus}
+                    </Text>
 
-                <Text style={styles.historyDate}>
-                  {new Date(
-                    history.changedAt,
-                  ).toLocaleString('tr-TR')}
-                </Text>
+                    <Text
+                      style={styles.historyDate}
+                    >
+                      {new Date(
+                        history.changedAt,
+                      ).toLocaleString('tr-TR')}
+                    </Text>
 
-                {history.note && (
-                  <Text style={styles.historyNote}>
-                    Not: {history.note}
-                  </Text>
-                )}
+                    {history.note && (
+                      <Text
+                        style={styles.historyNote}
+                      >
+                        Not: {history.note}
+                      </Text>
+                    )}
 
-                {index < statusHistory.length - 1 && (
-                  <View style={styles.historyDivider} />
-                )}
-              </View>
-            ))}
-          </View>
-        )}
-
+                    {index <
+                      statusHistory.length - 1 && (
+                      <View
+                        style={
+                          styles.historyDivider
+                        }
+                      />
+                    )}
+                  </View>
+                ),
+              )}
+            </View>
+          )}
 
           <View style={styles.divider} />
 
@@ -498,7 +643,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
 
-    historyItem: {
+  historyItem: {
     paddingVertical: spacing.sm,
   },
 
