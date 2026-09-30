@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-
 import {
   Image,
   ScrollView,
@@ -7,27 +6,17 @@ import {
   Text,
   View,
 } from 'react-native';
-
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 import { useRoute } from '@react-navigation/native';
-
-import type {
-  NativeStackScreenProps,
-} from '@react-navigation/native-stack';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import Button from '../components/Button';
-
 import TextInput from '../components/TextInput';
-
 import Empty from '../components/Empty';
-
 import ErrorState from '../components/ErrorState';
-
 import Loading from '../components/Loading';
-
 import PriorityBadge from '../components/PriorityBadge';
-
 import StatusBadge from '../components/StatusBadge';
 
 import {
@@ -43,7 +32,6 @@ import {
 } from '../services/profileService';
 
 import type { RequestListItem } from '../services/requestService';
-
 import type { AppStackParamList } from '../types/Navigation';
 
 import type {
@@ -54,18 +42,18 @@ import type {
 } from '../types/models';
 
 import { colors } from '../theme/colors';
-
 import { spacing } from '../theme/spacing';
-
 import { typography } from '../theme/typography';
 
-type RequestDetailScreenProps = NativeStackScreenProps<
-  AppStackParamList,
-  'RequestDetail'
->;
+type RequestDetailScreenProps =
+  NativeStackScreenProps<
+    AppStackParamList,
+    'RequestDetail'
+  >;
 
 export default function RequestDetailScreen() {
-  const route = useRoute<RequestDetailScreenProps['route']>();
+  const route =
+    useRoute<RequestDetailScreenProps['route']>();
 
   const { requestId } = route.params;
 
@@ -75,9 +63,11 @@ export default function RequestDetailScreen() {
   const [userRole, setUserRole] =
     useState<UserRole | null>(null);
 
-  const [staffUsers, setStaffUsers] = useState<User[]>([]);
+  const [staffUsers, setStaffUsers] =
+    useState<User[]>([]);
 
-  const [isAssigning, setIsAssigning] = useState(false);
+  const [isAssigning, setIsAssigning] =
+    useState(false);
 
   const [isLoading, setIsLoading] =
     useState(true);
@@ -91,43 +81,51 @@ export default function RequestDetailScreen() {
   const [errorMessage, setErrorMessage] =
     useState<string | null>(null);
 
-  const [statusNote, setStatusNote] = useState('');
+  const [statusNote, setStatusNote] =
+    useState('');
 
-  const loadRequest = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
+  const loadRequest = useCallback(
+    async () => {
+      setIsLoading(true);
+      setErrorMessage(null);
 
-    try {
-      const data = await getRequestById(requestId);
+      try {
+        const data =
+          await getRequestById(requestId);
 
-      setRequest(data);
-    } catch (error) {
-      console.error(
-        'Talep detayı yüklenemedi:',
-        error,
-      );
+        setRequest(data);
+      } catch (error) {
+        console.error(
+          'Talep detayı yüklenemedi:',
+          error,
+        );
 
-      setErrorMessage(
-        'Talep detayları yüklenirken bir hata oluştu.',
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [requestId]);
+        setErrorMessage(
+          'Talep detayları yüklenirken bir hata oluştu.',
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [requestId],
+  );
 
-  const loadStatusHistory = useCallback(async () => {
-    try {
-      const history =
-        await getRequestStatusHistory(requestId);
+  const loadStatusHistory =
+    useCallback(async () => {
+      try {
+        const history =
+          await getRequestStatusHistory(
+            requestId,
+          );
 
-      setStatusHistory(history);
-    } catch (error) {
-      console.error(
-        'Durum geçmişi yüklenemedi:',
-        error,
-      );
-    }
-  }, [requestId]);
+        setStatusHistory(history);
+      } catch (error) {
+        console.error(
+          'Durum geçmişi yüklenemedi:',
+          error,
+        );
+      }
+    }, [requestId]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -148,7 +146,8 @@ export default function RequestDetailScreen() {
   useEffect(() => {
     const loadUserRole = async () => {
       try {
-        const role = await getCurrentUserRole();
+        const role =
+          await getCurrentUserRole();
 
         setUserRole(role);
       } catch (error) {
@@ -162,47 +161,53 @@ export default function RequestDetailScreen() {
     void loadUserRole();
   }, []);
 
- useEffect(() => {
-  if (!userRole) {
-    return;
-  }
+  useEffect(() => {
+    if (!userRole) {
+      return;
+    }
 
-  const timeoutId = setTimeout(() => {
-    const loadStaffUsers = async () => {
-      try {
-        const staff = await getStaffUsers();
-        setStaffUsers(staff);
-      } catch (error) {
-        console.error(
-          'Personel listesi yüklenemedi:',
-          error,
-        );
-      }
-    };
+    const timeoutId = setTimeout(() => {
+      const loadStaffUsers = async () => {
+        try {
+          const staff =
+            await getStaffUsers();
 
-    void loadStaffUsers();
-  }, 0);
+          setStaffUsers(staff);
+        } catch (error) {
+          console.error(
+            'Personel listesi yüklenemedi:',
+            error,
+          );
+        }
+      };
 
-  return () => clearTimeout(timeoutId);
-}, [userRole]);
+      void loadStaffUsers();
+    }, 0);
 
+    return () => clearTimeout(timeoutId);
+  }, [userRole]);
 
   const handleStatusChange = async (
     newStatus: RequestStatus,
   ) => {
-    if (!request) return;
+    if (!request) {
+      return;
+    }
 
     setIsChangingStatus(true);
 
     try {
-      const updatedRequest = await changeRequestStatus(
-        request.id,
-        newStatus,
-        statusNote.trim() || undefined,
-      );
+      const updatedRequest =
+        await changeRequestStatus(
+          request.id,
+          newStatus,
+          statusNote.trim() || undefined,
+        );
 
       setRequest((currentRequest) => {
-        if (!currentRequest) return currentRequest;
+        if (!currentRequest) {
+          return currentRequest;
+        }
 
         return {
           ...currentRequest,
@@ -226,18 +231,23 @@ export default function RequestDetailScreen() {
   const handleAssignStaff = async (
     staffId: string,
   ) => {
-    if (!request) return;
+    if (!request) {
+      return;
+    }
 
     try {
       setIsAssigning(true);
 
-      const updatedRequest = await assignRequest(
-        request.id,
-        staffId,
-      );
+      const updatedRequest =
+        await assignRequest(
+          request.id,
+          staffId,
+        );
 
       setRequest((currentRequest) => {
-        if (!currentRequest) return currentRequest;
+        if (!currentRequest) {
+          return currentRequest;
+        }
 
         return {
           ...currentRequest,
@@ -278,36 +288,82 @@ export default function RequestDetailScreen() {
   }
 
   const canChangeStatus =
-    userRole === 'staff' || userRole === 'admin';
+    userRole === 'staff' ||
+    userRole === 'admin';
+
+  const assignedStaff = request.assignedTo
+    ? staffUsers.find(
+        (staff) =>
+          staff.id === request.assignedTo,
+      )
+    : null;
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={
+          styles.content
+        }
         showsVerticalScrollIndicator={false}
       >
+        {/* Header */}
         <View style={styles.headerCard}>
+          <Text style={styles.eyebrow}>
+            TALEP DETAYI
+          </Text>
+
           <Text style={styles.title}>
             {request.title}
           </Text>
 
           <View style={styles.badges}>
-            <StatusBadge status={request.status} />
+            <StatusBadge
+              status={request.status}
+            />
 
             <PriorityBadge
               priority={request.priority}
             />
           </View>
 
+          {/* Status Actions */}
           {canChangeStatus && (
             <View style={styles.statusActions}>
-              <Text style={styles.statusActionTitle}>
-                Durumu Değiştir
-              </Text>
+              <View
+                style={styles.actionSectionHeader}
+              >
+                <View
+                  style={styles.actionSectionIcon}
+                >
+                  <Ionicons
+                    name="swap-horizontal-outline"
+                    size={19}
+                    color={colors.primary}
+                  />
+                </View>
+
+                <View>
+                  <Text
+                    style={
+                      styles.statusActionTitle
+                    }
+                  >
+                    Durumu Değiştir
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.actionSectionSubtitle
+                    }
+                  >
+                    Talebin mevcut durumunu güncelle
+                  </Text>
+                </View>
+              </View>
 
               <TextInput
                 label="Durum Notu"
-                placeholder="Durum değişikliği için not ekleyin"
+                placeholder="İsteğe bağlı not ekleyin"
                 value={statusNote}
                 onChangeText={setStatusNote}
                 multiline
@@ -340,11 +396,13 @@ export default function RequestDetailScreen() {
                   }}
                   loading={
                     isChangingStatus &&
-                    request.status !== 'in_progress'
+                    request.status !==
+                      'in_progress'
                   }
                   disabled={
                     isChangingStatus ||
-                    request.status === 'in_progress'
+                    request.status ===
+                      'in_progress'
                   }
                 />
 
@@ -357,11 +415,13 @@ export default function RequestDetailScreen() {
                   }}
                   loading={
                     isChangingStatus &&
-                    request.status !== 'resolved'
+                    request.status !==
+                      'resolved'
                   }
                   disabled={
                     isChangingStatus ||
-                    request.status === 'resolved'
+                    request.status ===
+                      'resolved'
                   }
                 />
 
@@ -374,11 +434,13 @@ export default function RequestDetailScreen() {
                   }}
                   loading={
                     isChangingStatus &&
-                    request.status !== 'cancelled'
+                    request.status !==
+                      'cancelled'
                   }
                   disabled={
                     isChangingStatus ||
-                    request.status === 'cancelled'
+                    request.status ===
+                      'cancelled'
                   }
                 />
               </View>
@@ -386,158 +448,346 @@ export default function RequestDetailScreen() {
           )}
         </View>
 
+        {/* Description */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>
-            Açıklama
-          </Text>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionIcon}>
+              <Ionicons
+                name="document-text-outline"
+                size={20}
+                color={colors.primary}
+              />
+            </View>
+
+            <View>
+              <Text style={styles.sectionTitle}>
+                Açıklama
+              </Text>
+
+              <Text style={styles.sectionSubtitle}>
+                Talep hakkında verilen bilgiler
+              </Text>
+            </View>
+          </View>
 
           <Text style={styles.description}>
             {request.description}
           </Text>
         </View>
 
+        {/* Request Information */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>
-            Talep Bilgileri
-          </Text>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionIcon}>
+              <Ionicons
+                name="information-circle-outline"
+                size={20}
+                color={colors.primary}
+              />
+            </View>
 
-          <View>
-  <Text style={styles.infoLabel}>
-    Sorumlu Personel
-  </Text>
-
-  {request.assignedTo ? (
-    <Text style={styles.infoValue}>
-      {staffUsers.find(
-        (staff) => staff.id === request.assignedTo,
-      )?.fullName ?? 'Atanan personel bulunamadı.'}
-    </Text>
-  ) : (
-    <Text style={styles.infoValue}>
-      Henüz personel atanmadı.
-    </Text>
-  )}
-
-  {userRole === 'admin' && (
-    <View style={styles.statusButtons}>
-      {staffUsers.map((staff) => (
-        <Button
-          key={staff.id}
-          title={
-            request.assignedTo === staff.id
-              ? `✓ ${staff.fullName}`
-              : staff.fullName
-          }
-          onPress={() => {
-            void handleAssignStaff(staff.id);
-          }}
-          loading={isAssigning}
-          disabled={isAssigning}
-        />
-      ))}
-    </View>
-  )}
-</View>
-
-
-
-          <View style={styles.divider} />
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>
-              Kategori
-            </Text>
-
-            <Text style={styles.infoValue}>
-              {request.categoryName}
-            </Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>
-              Oluşturulma
-            </Text>
-
-            <Text style={styles.infoValue}>
-              {new Date(
-                request.createdAt,
-              ).toLocaleString('tr-TR')}
-            </Text>
-          </View>
-
-          {statusHistory.length > 0 && (
-            <View style={styles.card}>
+            <View>
               <Text style={styles.sectionTitle}>
-                Durum Geçmişi
+                Talep Bilgileri
               </Text>
 
-              {statusHistory.map(
-                (history, index) => (
-                  <View
-                    key={history.id}
-                    style={styles.historyItem}
-                  >
-                    <Text
-                      style={styles.historyStatus}
-                    >
-                      {history.newStatus}
-                    </Text>
+              <Text style={styles.sectionSubtitle}>
+                Talebin detayları
+              </Text>
+            </View>
+          </View>
 
-                    <Text
-                      style={styles.historyDate}
-                    >
-                      {new Date(
-                        history.changedAt,
-                      ).toLocaleString('tr-TR')}
-                    </Text>
+          {/* Assigned Staff */}
+          <View style={styles.infoRow}>
+            <View style={styles.infoRowIcon}>
+              <Ionicons
+                name="person-outline"
+                size={19}
+                color={colors.text.secondary}
+              />
+            </View>
 
-                    {history.note && (
-                      <Text
-                        style={styles.historyNote}
-                      >
-                        Not: {history.note}
-                      </Text>
-                    )}
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>
+                Sorumlu Personel
+              </Text>
 
-                    {index <
-                      statusHistory.length - 1 && (
-                      <View
-                        style={
-                          styles.historyDivider
-                        }
-                      />
-                    )}
-                  </View>
-                ),
-              )}
+              <Text style={styles.infoValue}>
+                {assignedStaff?.fullName ??
+                  (request.assignedTo
+                    ? 'Atanan personel bulunamadı.'
+                    : 'Henüz personel atanmadı.')}
+              </Text>
+            </View>
+          </View>
+
+          {/* Admin Assignment */}
+          {userRole === 'admin' && (
+            <View style={styles.assignmentSection}>
+              <Text style={styles.assignmentTitle}>
+                Personel Ata
+              </Text>
+
+              <View style={styles.assignmentButtons}>
+                {staffUsers.map((staff) => (
+                  <Button
+                    key={staff.id}
+                    title={
+                      request.assignedTo ===
+                      staff.id
+                        ? `✓ ${staff.fullName}`
+                        : staff.fullName
+                    }
+                    onPress={() => {
+                      void handleAssignStaff(
+                        staff.id,
+                      );
+                    }}
+                    loading={isAssigning}
+                    disabled={isAssigning}
+                  />
+                ))}
+              </View>
             </View>
           )}
 
           <View style={styles.divider} />
 
+          {/* Category */}
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>
-              Son Güncelleme
-            </Text>
+            <View style={styles.infoRowIcon}>
+              <Ionicons
+                name="grid-outline"
+                size={19}
+                color={colors.text.secondary}
+              />
+            </View>
 
-            <Text style={styles.infoValue}>
-              {new Date(
-                request.updatedAt,
-              ).toLocaleString('tr-TR')}
-            </Text>
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>
+                Kategori
+              </Text>
+
+              <Text style={styles.infoValue}>
+                {request.categoryName}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Location */}
+          <View style={styles.infoRow}>
+            <View style={styles.infoRowIcon}>
+              <Ionicons
+                name="location-outline"
+                size={19}
+                color={colors.text.secondary}
+              />
+            </View>
+
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>
+                Konum
+              </Text>
+
+              <Text style={styles.infoValue}>
+                {request.latitude !== null &&
+                request.longitude !== null
+                  ? `${request.latitude}, ${request.longitude}`
+                  : 'Konum eklenmemiş.'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Created At */}
+          <View style={styles.infoRow}>
+            <View style={styles.infoRowIcon}>
+              <Ionicons
+                name="calendar-outline"
+                size={19}
+                color={colors.text.secondary}
+              />
+            </View>
+
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>
+                Oluşturulma
+              </Text>
+
+              <Text style={styles.infoValue}>
+                {new Date(
+                  request.createdAt,
+                ).toLocaleString('tr-TR')}
+              </Text>
+            </View>
+          </View>
+
+          {/* Status History */}
+          {statusHistory.length > 0 && (
+            <>
+              <View style={styles.divider} />
+
+              <View style={styles.historyHeader}>
+                <View
+                  style={styles.historyIcon}
+                >
+                  <Ionicons
+                    name="time-outline"
+                    size={19}
+                    color={colors.primary}
+                  />
+                </View>
+
+                <View>
+                  <Text
+                    style={styles.sectionTitle}
+                  >
+                    Durum Geçmişi
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.sectionSubtitle
+                    }
+                  >
+                    Talebin geçmiş hareketleri
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.historyContainer}>
+                {statusHistory.map(
+                  (history, index) => (
+                    <View
+                      key={history.id}
+                      style={styles.historyItem}
+                    >
+                      <View
+                        style={
+                          styles.historyIndicator
+                        }
+                      >
+                        <View
+                          style={
+                            styles.historyDot
+                          }
+                        />
+
+                        {index <
+                          statusHistory.length -
+                            1 && (
+                          <View
+                            style={
+                              styles.historyLine
+                            }
+                          />
+                        )}
+                      </View>
+
+                      <View
+                        style={
+                          styles.historyContent
+                        }
+                      >
+                        <Text
+                          style={
+                            styles.historyStatus
+                          }
+                        >
+                          {history.newStatus}
+                        </Text>
+
+                        <Text
+                          style={
+                            styles.historyDate
+                          }
+                        >
+                          {new Date(
+                            history.changedAt,
+                          ).toLocaleString(
+                            'tr-TR',
+                          )}
+                        </Text>
+
+                        {history.note && (
+                          <Text
+                            style={
+                              styles.historyNote
+                            }
+                          >
+                            {history.note}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  ),
+                )}
+              </View>
+            </>
+          )}
+
+          <View style={styles.divider} />
+
+          {/* Updated At */}
+          <View style={styles.infoRow}>
+            <View style={styles.infoRowIcon}>
+              <Ionicons
+                name="refresh-outline"
+                size={19}
+                color={colors.text.secondary}
+              />
+            </View>
+
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>
+                Son Güncelleme
+              </Text>
+
+              <Text style={styles.infoValue}>
+                {new Date(
+                  request.updatedAt,
+                ).toLocaleString('tr-TR')}
+              </Text>
+            </View>
           </View>
         </View>
 
+        {/* Image */}
         {request.imageUrl && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>
-              Görsel
-            </Text>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIcon}>
+                <Ionicons
+                  name="image-outline"
+                  size={20}
+                  color={colors.primary}
+                />
+              </View>
+
+              <View>
+                <Text
+                  style={styles.sectionTitle}
+                >
+                  Görsel
+                </Text>
+
+                <Text
+                  style={
+                    styles.sectionSubtitle
+                  }
+                >
+                  Talebe eklenen fotoğraf
+                </Text>
+              </View>
+            </View>
 
             <Image
-              source={{ uri: request.imageUrl }}
+              source={{
+                uri: request.imageUrl,
+              }}
               style={styles.image}
               resizeMode="cover"
             />
@@ -556,21 +806,33 @@ const styles = StyleSheet.create({
 
   content: {
     padding: spacing.lg,
-    paddingBottom: spacing.xxl,
+    paddingBottom: spacing.xxxl,
   },
+
+  /* Header */
 
   headerCard: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: spacing.lg,
     marginBottom: spacing.lg,
+  },
+
+  eyebrow: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    marginBottom: spacing.xs,
   },
 
   title: {
     ...typography.heading,
     color: colors.text.primary,
+    fontWeight: '600',
+    lineHeight: 28,
     marginBottom: spacing.md,
   },
 
@@ -581,33 +843,43 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
 
-  statusActions: {
-    marginTop: spacing.lg,
-  },
-
-  statusActionTitle: {
-    ...typography.bodyMedium,
-    color: colors.text.primary,
-    marginBottom: spacing.md,
-  },
-
-  statusButtons: {
-    gap: spacing.sm,
-  },
+  /* Sections */
 
   card: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: spacing.lg,
     marginBottom: spacing.lg,
+  },
+
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+
+  sectionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryLight,
+    marginRight: spacing.md,
   },
 
   sectionTitle: {
     ...typography.bodyMedium,
     color: colors.text.primary,
-    marginBottom: spacing.md,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+
+  sectionSubtitle: {
+    ...typography.small,
+    color: colors.text.secondary,
   },
 
   description: {
@@ -616,13 +888,74 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
 
+  /* Status */
+
+  statusActions: {
+    marginTop: spacing.xl,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+
+  actionSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+
+  actionSectionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryLight,
+    marginRight: spacing.md,
+  },
+
+  statusActionTitle: {
+    ...typography.bodyMedium,
+    color: colors.text.primary,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+
+  actionSectionSubtitle: {
+    ...typography.small,
+    color: colors.text.secondary,
+  },
+
+  statusButtons: {
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+
+  /* Information */
+
   infoRow: {
-    gap: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 52,
+  },
+
+  infoRowIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+    marginRight: spacing.md,
+  },
+
+  infoContent: {
+    flex: 1,
   },
 
   infoLabel: {
     ...typography.small,
     color: colors.text.secondary,
+    marginBottom: 2,
   },
 
   infoValue: {
@@ -633,23 +966,86 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: colors.border,
-    marginVertical: spacing.md,
+    marginVertical: spacing.sm,
   },
 
-  image: {
-    width: '100%',
-    height: 220,
-    borderRadius: 12,
-    backgroundColor: colors.background,
+  /* Assignment */
+
+  assignmentSection: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+
+  assignmentTitle: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+  },
+
+  assignmentButtons: {
+    gap: spacing.sm,
+  },
+
+  /* History */
+
+  historyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+
+  historyIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryLight,
+    marginRight: spacing.md,
+  },
+
+  historyContainer: {
+    paddingTop: spacing.xs,
   },
 
   historyItem: {
-    paddingVertical: spacing.sm,
+    flexDirection: 'row',
+    minHeight: 72,
+  },
+
+  historyIndicator: {
+    width: 24,
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+
+  historyDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+    marginTop: 5,
+  },
+
+  historyLine: {
+    width: 1,
+    flex: 1,
+    backgroundColor: colors.border,
+    marginTop: spacing.xs,
+  },
+
+  historyContent: {
+    flex: 1,
+    paddingBottom: spacing.md,
   },
 
   historyStatus: {
     ...typography.bodyMedium,
-    color: colors.text.primary,
+    color: colors.primary,
+    fontWeight: '700',
     textTransform: 'capitalize',
   },
 
@@ -662,12 +1058,16 @@ const styles = StyleSheet.create({
   historyNote: {
     ...typography.caption,
     color: colors.text.secondary,
+    lineHeight: 19,
     marginTop: spacing.xs,
   },
 
-  historyDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.md,
+  /* Image */
+
+  image: {
+    width: '100%',
+    height: 220,
+    borderRadius: 14,
+    backgroundColor: colors.background,
   },
 });
