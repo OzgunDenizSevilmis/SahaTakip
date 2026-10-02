@@ -16,27 +16,40 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const initializeSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+  let isMounted = true;
 
+  const initializeSession = async () => {
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
+    if (error) {
+      console.error('Oturum yüklenemedi:', error);
+    }
+
+    if (isMounted) {
       setSession(session);
       setIsLoading(false);
-    };
+    }
+  };
 
-    initializeSession();
+  void initializeSession();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, session) => {
+    if (isMounted) {
       setSession(session);
-    });
+      setIsLoading(false);
+    }
+  });
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+  return () => {
+    isMounted = false;
+    subscription.unsubscribe();
+  };
+}, []);
 
   const signOut = async () => {
     await supabase.auth.signOut();

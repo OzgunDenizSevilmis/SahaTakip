@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import NetInfo from '@react-native-community/netinfo';
+
 import {
   FlatList,
   Pressable,
@@ -20,7 +22,12 @@ import RequestFilter from '../components/RequestFilter';
 
 import { useRequestFilters } from '../hooks/useRequestFilters';
 import { getCategories } from '../services/categoryService';
-import { getMyRequests } from '../services/requestService';
+import { getMyRequests, } from '../services/requestService';
+import {
+  getCachedRequests,
+  saveCachedRequests,
+} from '../services/requestCacheService';
+
 
 import type { RequestListItem } from '../services/requestService';
 
@@ -49,6 +56,9 @@ export default function RequestsScreen() {
 
   const [isRefreshing, setIsRefreshing] =
     useState(false);
+  
+  const [isOffline, setIsOffline] = useState(false);
+
 
   const [categories, setCategories] = useState<
     { id: string; name: string }[]
@@ -70,6 +80,33 @@ export default function RequestsScreen() {
     statusFilter !== null ||
     categoryFilter !== null;
 
+
+    const loadRequests = async (showError = false) => {
+  try {
+    const data = await getMyRequests();
+
+    await saveCachedRequests(data);
+    setRequests(data);
+    setErrorMessage(null);
+  } catch (error) {
+    console.warn('Talepler sunucudan alınamadı:', error);
+
+    const cachedRequests = await getCachedRequests();
+
+    if (cachedRequests !== null) {
+      setRequests(cachedRequests);
+      setErrorMessage(null);
+    } else if (showError) {
+      setErrorMessage(
+        'Talepler yüklenemedi ve kayıtlı talepler bulunamadı.',
+      );
+    }
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
   useEffect(() => {
     let isMounted = true;
 
@@ -87,29 +124,41 @@ export default function RequestsScreen() {
         );
       }
     };
-
     const loadInitialRequests = async () => {
-      try {
-        const data = await getMyRequests();
+  try {
+    const data = await getMyRequests();
 
-        if (isMounted) {
-          setRequests(data);
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error(
-          'Talepler yüklenemedi:',
-          error,
+    await saveCachedRequests(data);
+
+    if (isMounted) {
+      setRequests(data);
+      setIsLoading(false);
+    }
+  } catch (error) {
+    console.error(
+      'Talepler sunucudan yüklenemedi:',
+      error,
+    );
+
+    const cachedRequests =
+      await getCachedRequests();
+
+    if (isMounted) {
+      if (cachedRequests) {
+        setRequests(cachedRequests);
+        setErrorMessage(null);
+      } else {
+        setErrorMessage(
+          'Talepler yüklenemedi ve kayıtlı talepler bulunamadı.',
         );
-
-        if (isMounted) {
-          setErrorMessage(
-            'Talepler yüklenirken bir hata oluştu.',
-          );
-          setIsLoading(false);
-        }
       }
-    };
+
+      setIsLoading(false);
+    }
+  }
+};
+
+        
 
     void loadInitialRequests();
     void loadCategories();
@@ -119,27 +168,89 @@ export default function RequestsScreen() {
     };
   }, []);
 
-  const handleRefresh = async () => {
-    try {
-      setIsRefreshing(true);
-      setErrorMessage(null);
+ useEffect(() => {
+  let wasOffline = false;
 
-      const data = await getMyRequests();
+  const unsubscribe = NetInfo.addEventListener((state) => {
+    const isNowOffline = state.isConnected === false;
 
-      setRequests(data);
-    } catch (error) {
-      console.error(
-        'Talepler yenilenemedi:',
-        error,
-      );
+    setIsOffline(isNowOffline);
 
-      setErrorMessage(
-        'Talepler yenilenirken bir hata oluştu.',
-      );
-    } finally {
-      setIsRefreshing(false);
+    if (isNowOffline) {
+      wasOffline = true;
+      return;
     }
-  };
+
+    if (wasOffline && state.isConnected === true) {
+      wasOffline = false;
+
+      void (async () => {
+        try {
+          const data = await getMyRequests();
+
+          await saveCachedRequests(data);
+          setRequests(data);
+          setErrorMessage(null);
+        } catch (error) {
+          console.error(
+            'Bağlantı geri geldiğinde talepler yenilenemedi:',
+            error,
+          );
+        }
+      })();
+    }
+  });
+
+  return unsubscribe;
+}, []);
+
+const handleRefresh = async () => {
+  setIsRefreshing(true);
+
+  try {
+    const networkState = await NetInfo.fetch();
+    const hasInternet = networkState.isConnected === true &&
+      networkState.isInternetReachable !== false;
+if (isOffline || !hasInternet) {
+      const cachedRequests = await getCachedRequests();
+
+      if (cachedRequests !== null) {
+        setRequests(cachedRequests);
+        setErrorMessage(null);
+      } else {
+        setErrorMessage(
+          'Çevrimdışısın ve kayıtlı talepler bulunamadı.',
+        );
+      }
+
+      return;
+    }
+
+    const data = await getMyRequests();
+
+    await saveCachedRequests(data);
+    setRequests(data);
+    setErrorMessage(null);
+  } catch (error) {
+    console.log('Talepler yenilenemedi:', error);
+
+    const cachedRequests = await getCachedRequests();
+
+    if (cachedRequests !== null) {
+      setRequests(cachedRequests);
+      setErrorMessage(null);
+    } else {
+      setErrorMessage(
+        'Talepler yenilenemedi ve kayıtlı talepler bulunamadı.',
+      );
+    }
+  } finally {
+    setIsRefreshing(false);
+  }
+};
+
+
+
 
   if (isLoading) {
     return (
@@ -158,6 +269,21 @@ export default function RequestsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+    {isOffline && (
+      <View style={styles.offlineBanner}>
+        <Ionicons
+          name="cloud-offline-outline"
+          size={18}
+          color={colors.warning}
+        />
+
+        <Text style={styles.offlineBannerText}>
+          Çevrimdışısın. Kayıtlı talepler gösteriliyor.
+        </Text>
+      </View>
+    )}
+
+
       <FlatList
         data={filteredRequests}
         keyExtractor={(item) => item.id}
@@ -459,4 +585,21 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '700',
   },
+  offlineBanner: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: spacing.sm,
+  paddingHorizontal: spacing.lg,
+  paddingVertical: spacing.sm,
+  backgroundColor: colors.warning + '18',
+  borderBottomWidth: 1,
+  borderBottomColor: colors.warning + '30',
+},
+
+offlineBannerText: {
+  flex: 1,
+  color: colors.text.primary,
+  fontSize: typography.caption.fontSize,
+  fontWeight: '500',
+},
 });

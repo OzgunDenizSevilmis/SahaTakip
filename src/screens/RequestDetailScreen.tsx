@@ -27,6 +27,12 @@ import {
 } from '../services/requestService';
 
 import {
+  getCachedRequest,
+  saveCachedRequest,
+} from '../services/requestCacheService';
+
+
+import {
   getCurrentUserRole,
   getStaffUsers,
 } from '../services/profileService';
@@ -84,31 +90,57 @@ export default function RequestDetailScreen() {
   const [statusNote, setStatusNote] =
     useState('');
 
-  const loadRequest = useCallback(
-    async () => {
-      setIsLoading(true);
-      setErrorMessage(null);
+const loadRequest = useCallback(async () => {
+  setIsLoading(true);
+  setErrorMessage(null);
 
-      try {
-        const data =
-          await getRequestById(requestId);
+  try {
+    let data;
 
-        setRequest(data);
-      } catch (error) {
-        console.error(
-          'Talep detayı yüklenemedi:',
-          error,
-        );
+    try {
+      data = await getRequestById(requestId);
+    } catch (error) {
+      console.error('Talep sunucudan alınamadı:', error);
 
+      data = await getCachedRequest(requestId);
+
+      if (!data) {
         setErrorMessage(
-          'Talep detayları yüklenirken bir hata oluştu.',
+          'Talep detayları yüklenemedi ve kayıtlı talep bulunamadı.',
         );
-      } finally {
-        setIsLoading(false);
+        return;
       }
-    },
-    [requestId],
-  );
+    }
+
+    let assignedStaffName = data.assignedStaffName ?? null;
+
+    if (data.assignedTo) {
+      try {
+        const staff = await getStaffUsers();
+
+        assignedStaffName =
+          staff.find((item) => item.id === data.assignedTo)?.fullName ??
+          assignedStaffName;
+      } catch (error) {
+        console.error('Personel listesi alınamadı:', error);
+      }
+    }
+
+    const enrichedData = {
+      ...data,
+      assignedStaffName,
+    };
+
+    await saveCachedRequest(enrichedData);
+    setRequest(enrichedData);
+  } catch (error) {
+    console.error('Talep detayı yüklenemedi:', error);
+    setErrorMessage('Talep detayları yüklenemedi.');
+  } finally {
+    setIsLoading(false);
+  }
+}, [requestId]);
+
 
   const loadStatusHistory =
     useCallback(async () => {
@@ -161,31 +193,27 @@ export default function RequestDetailScreen() {
     void loadUserRole();
   }, []);
 
-  useEffect(() => {
-    if (!userRole) {
-      return;
-    }
+ useEffect(() => {
+  const timeoutId = setTimeout(() => {
+    const loadStaffUsers = async () => {
+      try {
+        console.log('Personel listesi yükleme fonksiyonu çalıştı.');
 
-    const timeoutId = setTimeout(() => {
-      const loadStaffUsers = async () => {
-        try {
-          const staff =
-            await getStaffUsers();
+        const staff = await getStaffUsers();
+        setStaffUsers(staff);
+      } catch (error) {
+        console.error(
+          'Personel listesi yüklenemedi:',
+          error,
+        );
+      }
+    };
 
-          setStaffUsers(staff);
-        } catch (error) {
-          console.error(
-            'Personel listesi yüklenemedi:',
-            error,
-          );
-        }
-      };
+    void loadStaffUsers();
+  }, 0);
 
-      void loadStaffUsers();
-    }, 0);
-
-    return () => clearTimeout(timeoutId);
-  }, [userRole]);
+  return () => clearTimeout(timeoutId);
+}, []);
 
   const handleStatusChange = async (
     newStatus: RequestStatus,
@@ -514,9 +542,11 @@ export default function RequestDetailScreen() {
 
               <Text style={styles.infoValue}>
                 {assignedStaff?.fullName ??
-                  (request.assignedTo
-                    ? 'Atanan personel bulunamadı.'
-                    : 'Henüz personel atanmadı.')}
+  request.assignedStaffName ??
+  (request.assignedTo
+    ? 'Atanan personel bulunamadı.'
+    : 'Henüz personel atanmadı.')}
+    
               </Text>
             </View>
           </View>

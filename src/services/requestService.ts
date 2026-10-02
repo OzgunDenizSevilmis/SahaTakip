@@ -29,7 +29,9 @@ type RequestListRow = RequestRow & {
 };
 export type RequestListItem = Request & {
   categoryName: string;
+  assignedStaffName?: string | null;
 };
+
 function mapRequest(row: RequestRow): Request {
   return {
     id: row.id,

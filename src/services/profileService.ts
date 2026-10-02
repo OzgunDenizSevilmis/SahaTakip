@@ -1,4 +1,5 @@
 import type {User, UserRole} from '../types/models';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {supabase} from './supabase';
 
 
@@ -69,18 +70,52 @@ export async function getCurrentUserRole(): Promise<UserRole> {
   return data.role as UserRole;
 }
 
-export async function getStaffUsers(): Promise<User[]> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('role', 'staff')
-    .order('full_name', { ascending: true });
+const STAFF_CACHE_KEY = '@sahatakip/staff-cache';
 
-  if (error) {
+export async function getStaffUsers(): Promise<User[]> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'staff')
+      .order('full_name', { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    const staffUsers = (data ?? []).map(mapProfile);
+
+    await AsyncStorage.setItem(
+      STAFF_CACHE_KEY,
+      JSON.stringify(staffUsers),
+    );
+
+    return staffUsers;
+  } catch (error) {
+    try {
+      const cachedData = await AsyncStorage.getItem(STAFF_CACHE_KEY);
+
+      if (cachedData) {
+        console.warn(
+          'Sunucuya ulaşılamadı. Önbellekteki personel listesi kullanılıyor.',
+        );
+
+        return JSON.parse(cachedData) as User[];
+      }
+    } catch (cacheError) {
+      console.error(
+        'Önbellekteki personel listesi okunamadı:',
+        cacheError,
+      );
+    }
+
+    console.error(
+      'Personel listesi sunucudan veya önbellekten alınamadı:',
+      error,
+    );
+
     throw error;
   }
-
-  return (data ?? []).map(mapProfile);
 }
-
 
